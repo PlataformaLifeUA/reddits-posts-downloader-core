@@ -5,6 +5,9 @@
  */
 package es.ua.redditspostsdownloadercore.reddit;
 
+import java.util.ArrayList;
+import org.json.JSONObject;
+
 /**
  *
  * @author balmarcha
@@ -18,6 +21,7 @@ public class RedditPost {
     private String author;
     
     private int numRespuestas;
+    ArrayList<RedditComment> comments;
 
     public RedditPost(String id, String title, String text, String subreddit, String author) {
         
@@ -56,5 +60,13 @@ public class RedditPost {
     public int getNumRespuestas()
     {
         return numRespuestas;
+    }
+
+    public void addComment(JSONObject comment, RedditURL redditURL) {
+        id = comment.getString("id");
+        author = comment.getString("author");
+        text = comment.getString("body");
+        
+        comments.add(new RedditComment(id, comment.getString("parent_id").substring(comment.getString("parent_id").indexOf("_") + 1), author, text, redditURL.getMainpost().getId()));
     }
 }

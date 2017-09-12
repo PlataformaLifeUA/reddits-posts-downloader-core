@@ -30,19 +30,18 @@ public class RedditURL {
     }
     
     private RedditPost mainpost;
-    private ArrayList<RedditComment> comments;
     private String url;
     private int namecount;
 
     public RedditURL(String url) {
 
-        comments = new ArrayList<>();
+        mainpost.comments = new ArrayList<>();
         this.url = url;
         namecount = 1;
     }
 
     public ArrayList<RedditComment> getComments() {
-        return comments;
+        return mainpost.comments;
     }
 
     public RedditPost getMainpost() {
@@ -60,99 +59,6 @@ public class RedditURL {
 
     public void addNamecount() {
         this.namecount++;
-    }
-    
-    public void pushComment(JSONObject comment) {
-
-        String id = comment.getString("id");
-        String parentid = comment.getString("parent_id");
-        String author = comment.getString("author");
-        String text = comment.getString("body");
-        String postid = this.mainpost.getId();
-
-        RedditComment newcomment = new RedditComment(id, parentid.substring(parentid.indexOf("_") + 1), author, text, postid);
-        comments.add(newcomment);
-    }
-    
-    public void manageJSON(JSONArray json) {
-
-        for (int i = 0; i < json.length(); i++) {
-
-            JSONObject objectjson = json.getJSONObject(i);
-            JSONObject data = objectjson.getJSONObject("data");
-            JSONArray children = data.getJSONArray("children");
-            this.getJSONfromChildren(children);
-        }
-    }
-
-    public void getJSONfromURL() throws IOException, InterruptedException {
-
-        try {
-            String command = "curl -X GET -L " + url;
-            String resultCurl = "";
-
-            do {
-                ExternalProcess ep = new ExternalProcess(command);
-                resultCurl = ep.execute(new StringBuilder());
-
-                sleep(500);
-                
-                System.out.println("es.ua.redditdownloadercore.reddit.RedditURL.getJSONfromURL()");
-
-            } while (resultCurl.isEmpty() || resultCurl.contains("error"));
-
-            JSONArray json = new JSONArray(resultCurl);
-
-            this.manageJSON(json);
-
-        } catch (ExecutionException ex) {
-            Logger.getLogger(RedditURL.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    public void getJSONfromChildren(JSONArray children) {
-
-        boolean post_empty = false;
-        for (int j = 0; j < children.length() && !post_empty; j++) {
-
-            JSONObject child = children.getJSONObject(j);
-
-            switch (child.getString("kind")) {
-                case "t1":
-                    if (this.mainpost != null) {
-                        JSONObject comment = child.getJSONObject("data");
-                        this.pushComment(comment);
-                        if (comment.has("replies")) {
-                            if (comment.get("author").equals(mainpost.getAuthor())) {
-                                mainpost.setNumRespuestas();
-                            }
-
-                            String rep = comment.get("replies").toString();
-                            if (!rep.equals("")) {
-                                JSONObject replies = comment.getJSONObject("replies");
-                                if (replies.has("data")) {
-                                    JSONObject data = replies.getJSONObject("data");
-                                    JSONArray babies = data.getJSONArray("children");
-                                    this.getJSONfromChildren(babies);
-                                }
-                            }
-                        }
-                    }
-                    break;
-                case "t3":
-                    JSONObject post = child.getJSONObject("data");
-                    if (!post.getString("selftext").isEmpty()) {
-                        this.setMainPost(post);
-                    } else {
-                        post_empty = true;
-                    }
-
-                    break;
-
-                default:
-                    break;
-            }
-        }
     }
     
     /**
@@ -204,6 +110,83 @@ public class RedditURL {
 
                 String urlPostJson = "http://www.reddit.com" + urlPost.substring(0, urlPost.length() - 1) + ".json";
                 urls.add(urlPostJson);
+            }
+        }
+    }
+
+    public void getJSONfromURL() throws IOException, InterruptedException {
+
+        try {
+            String command = "curl -X GET -L " + url;
+            String resultCurl = "";
+
+            do {
+                ExternalProcess ep = new ExternalProcess(command);
+                resultCurl = ep.execute(new StringBuilder());
+
+                sleep(500);
+
+            } while (resultCurl.isEmpty() || resultCurl.contains("error"));
+
+            manageJSON(new JSONArray(resultCurl));
+
+        } catch (ExecutionException ex) {
+            Logger.getLogger(RedditURL.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public void manageJSON(JSONArray json) {
+
+        for (int i = 0; i < json.length(); i++) {
+
+            JSONObject objectjson = json.getJSONObject(i);
+            JSONObject data = objectjson.getJSONObject("data");
+            JSONArray children = data.getJSONArray("children");
+            this.getJSONfromChildren(children);
+        }
+    }
+
+    public void getJSONfromChildren(JSONArray children) {
+
+        boolean post_empty = false;
+        for (int j = 0; j < children.length() && !post_empty; j++) {
+
+            JSONObject child = children.getJSONObject(j);
+
+            switch (child.getString("kind")) {
+                case "t1":
+                    if (this.mainpost != null) {
+                        JSONObject comment = child.getJSONObject("data");
+                        mainpost.addComment(comment, this);
+                        if (comment.has("replies")) {
+                            if (comment.get("author").equals(mainpost.getAuthor())) {
+                                mainpost.setNumRespuestas();
+                            }
+
+                            String rep = comment.get("replies").toString();
+                            if (!rep.equals("")) {
+                                JSONObject replies = comment.getJSONObject("replies");
+                                if (replies.has("data")) {
+                                    JSONObject data = replies.getJSONObject("data");
+                                    JSONArray babies = data.getJSONArray("children");
+                                    this.getJSONfromChildren(babies);
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "t3":
+                    JSONObject post = child.getJSONObject("data");
+                    if (!post.getString("selftext").isEmpty()) {
+                        this.setMainPost(post);
+                    } else {
+                        post_empty = true;
+                    }
+
+                    break;
+
+                default:
+                    break;
             }
         }
     }
