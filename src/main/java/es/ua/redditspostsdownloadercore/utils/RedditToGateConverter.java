@@ -52,7 +52,7 @@ public class RedditToGateConverter {
         }
     }
 
-    public void redditPostAndCommentToGate(RedditURL ru, String folderOut) {
+    public void redditPostAndCommentToGate(RedditURL ru) {
 
         String path = folderOut + "/" + ru.getMainpost().getId();
 
@@ -63,11 +63,11 @@ public class RedditToGateConverter {
         createDirectory(path);
         redditPostToGate(ru, path);
         redditCommentsToGate(ru, path);
-
-        System.setProperty("file.encoding", System.getProperty("file.encoding"));
+        
+        ru.resetCommentcount();
     }
 
-    private void redditPostToGate(RedditURL ru, String folderOut) {
+    private void redditPostToGate(RedditURL ru, String path) {
 
         try {
 
@@ -82,17 +82,17 @@ public class RedditToGateConverter {
 
             addAnnotationsFeatures(document);
 
-            String name = "0_MainPost_" + ru.getMainpost().getId() + ".xml";
-            createArchive(document, name);
+            String name = "Post_" + ru.getMainpost().getId() + ".xml";
+            createArchive(document, path, name);
             
         } catch (ResourceInstantiationException ex) {
             Logger.getLogger(RedditToGateConverter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
-    private void redditCommentsToGate(RedditURL ru, String folderOut) {
+    private void redditCommentsToGate(RedditURL ru, String path) {
 
-        for (RedditComment comment : ru.getComments()) {
+        for (RedditComment comment : ru.getMainpost().getComments()) {
 
             try {
 
@@ -108,12 +108,12 @@ public class RedditToGateConverter {
 
                 String name = "";
                 if (comment.getParentid().equals(comment.getPostid()))
-                    name = ru.getNamecount() + " - Post: " + comment.getPostid() + " - Comment with ID: " + comment.getId() + ".xml";
+                    name = "Comment_" + ru.getCommentcount() + " - ID: " + comment.getId() + ".xml";
                 else
-                    name = ru.getNamecount() + " - Post: " + comment.getPostid() + " - Comment with ID: " + comment.getId() + " - In reply to " + comment.getParentid() + ".xml";
+                    name = "Comment_" + ru.getCommentcount() + " - ID: " + comment.getId() + " - In reply to: " + comment.getParentid() + ".xml";
 
-                ru.addNamecount();
-                createArchive(document, name);
+                ru.addCommentcount();
+                createArchive(document, path, name);
                 
             } catch (ResourceInstantiationException ex) {
 
@@ -149,9 +149,9 @@ public class RedditToGateConverter {
         dir.mkdir();
     }
     
-    private void createArchive(Document document, String name) {
+    private void createArchive(Document document, String path, String name) {
         
-        File outputFile = new File(folderOut, name);
+        File outputFile = new File(path, name);
 
         try (PrintWriter pw = new PrintWriter(outputFile, encoding)) {
 

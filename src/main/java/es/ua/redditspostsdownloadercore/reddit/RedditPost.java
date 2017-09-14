@@ -21,8 +21,12 @@ public class RedditPost {
     private String author;
     
     private int numRespuestas;
-    ArrayList<RedditComment> comments;
+    private ArrayList<RedditComment> comments;
 
+    public RedditPost() {
+        this(null, null, null, null, null);
+    }
+    
     public RedditPost(String id, String title, String text, String subreddit, String author) {
         
         this.id = id;
@@ -31,6 +35,8 @@ public class RedditPost {
         this.subreddit = subreddit;
         this.author = author;
         this.numRespuestas = 0;
+        
+        comments = new ArrayList<>();
     }
     
     public String getId(){
@@ -60,6 +66,10 @@ public class RedditPost {
     public int getNumRespuestas()
     {
         return numRespuestas;
+    }
+    
+    public ArrayList<RedditComment> getComments() {
+        return comments;
     }
 
     public void addComment(JSONObject comment, RedditURL redditURL) {

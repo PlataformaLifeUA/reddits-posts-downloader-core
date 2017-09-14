@@ -37,6 +37,11 @@
             <version>8.4.1</version>
             <type>jar</type>
         </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>airline</artifactId>
+            <version>0.7</version>
+        </dependency>
     </dependencies>
     
     <distributionManagement>

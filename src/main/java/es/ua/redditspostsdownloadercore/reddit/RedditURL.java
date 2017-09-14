@@ -23,25 +23,14 @@ import org.json.JSONObject;
  * @author balmarcha
  */
 public class RedditURL {
-    
-    public static void holamundo() {
-        
-        System.out.println("hola mundo!");
-    }
-    
+
+    private int commentcount;
     private RedditPost mainpost;
-    private String url;
-    private int namecount;
 
-    public RedditURL(String url) {
+    public RedditURL() {
 
-        mainpost.comments = new ArrayList<>();
-        this.url = url;
-        namecount = 1;
-    }
-
-    public ArrayList<RedditComment> getComments() {
-        return mainpost.comments;
+        commentcount = 1;
+        mainpost = new RedditPost();
     }
 
     public RedditPost getMainpost() {
@@ -53,24 +42,28 @@ public class RedditURL {
         mainpost = new RedditPost(post.getString("id"), post.getString("title"), post.getString("selftext"), post.getString("subreddit"), post.getString("author"));
     }
 
-    public int getNamecount() {
-        return namecount;
+    public int getCommentcount() {
+        return commentcount;
     }
 
-    public void addNamecount() {
-        this.namecount++;
+    public void addCommentcount() {
+        this.commentcount++;
     }
-    
+
+    public void resetCommentcount() {
+        this.commentcount = 1;
+    }
+
     /**
      * Obtain url from hashtag
      *
      * @param hashtag
-     * @param urls
+     * @return
      * @throws FileNotFoundException
      * @throws IOException
      * @throws java.lang.InterruptedException
      */
-    public static void getUrlsByHashtag(String hashtag, List<String> urls) throws FileNotFoundException, IOException, InterruptedException {
+    public List<String> getUrlsByHashtag(String hashtag) throws FileNotFoundException, IOException, InterruptedException {
 
         String url = "http://www.reddit.com/r/" + hashtag + ".json";
 
@@ -83,26 +76,29 @@ public class RedditURL {
             do {
                 ExternalProcess ep = new ExternalProcess(command);
                 resultCurl = ep.execute(error);
-                
+
                 sleep(500);
 
             } while (resultCurl.isEmpty() || resultCurl.contains("\"error\": 4"));
 
             if (!error.toString().isEmpty()) {
 
-                extractURL(resultCurl, urls);
+                return extractURL(resultCurl);
             }
 
         } catch (ExecutionException ex) {
             Logger.getLogger(RedditURL.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        return null;
     }
-    
-    private static void extractURL(String resultCurl, List<String> urls) throws JSONException {
+
+    private List<String> extractURL(String resultCurl) throws JSONException {
 
         JSONObject jsonObject = new JSONObject(resultCurl);
         JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONArray("children");
 
+        List<String> urls = new ArrayList<>();
         for (int i = 0; i < jsonArray.length(); i++) {
 
             String urlPost = jsonArray.getJSONObject(i).getJSONObject("data").getString("permalink");
@@ -112,9 +108,11 @@ public class RedditURL {
                 urls.add(urlPostJson);
             }
         }
+
+        return urls;
     }
 
-    public void getJSONfromURL() throws IOException, InterruptedException {
+    public void getJSONfromURL(String url) throws IOException, InterruptedException {
 
         try {
             String command = "curl -X GET -L " + url;
@@ -126,7 +124,7 @@ public class RedditURL {
 
                 sleep(500);
 
-            } while (resultCurl.isEmpty() || resultCurl.contains("error"));
+            } while (resultCurl.isEmpty() || resultCurl.contains("\"error\": 4"));
 
             manageJSON(new JSONArray(resultCurl));
 
@@ -134,22 +132,25 @@ public class RedditURL {
             Logger.getLogger(RedditURL.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     public void manageJSON(JSONArray json) {
 
-        for (int i = 0; i < json.length(); i++) {
+        if (!((JSONObject) json.getJSONObject(0).getJSONObject("data").getJSONArray("children").getJSONObject(0).get("data")).isNull("selftext_html")) {
+            
+            for (int i = 0; i < json.length(); i++) {
 
-            JSONObject objectjson = json.getJSONObject(i);
-            JSONObject data = objectjson.getJSONObject("data");
-            JSONArray children = data.getJSONArray("children");
-            this.getJSONfromChildren(children);
+                JSONObject objectjson = json.getJSONObject(i);
+                JSONObject data = objectjson.getJSONObject("data");
+                JSONArray children = data.getJSONArray("children");
+
+                this.getJSONfromChildren(children);
+            }
         }
     }
 
     public void getJSONfromChildren(JSONArray children) {
 
-        boolean post_empty = false;
-        for (int j = 0; j < children.length() && !post_empty; j++) {
+        for (int j = 0; j < children.length(); j++) {
 
             JSONObject child = children.getJSONObject(j);
 
@@ -177,14 +178,8 @@ public class RedditURL {
                     break;
                 case "t3":
                     JSONObject post = child.getJSONObject("data");
-                    if (!post.getString("selftext").isEmpty()) {
-                        this.setMainPost(post);
-                    } else {
-                        post_empty = true;
-                    }
-
+                    this.setMainPost(post);
                     break;
-
                 default:
                     break;
             }
